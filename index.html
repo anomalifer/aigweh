@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yui - Virtual Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+        
+        .character-container {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .character-container:hover {
+            transform: scale(1.02);
+        }
+        
+        .speech-bubble {
+            background: white;
+            border-radius: 20px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: fadeInUp 0.5s ease;
+        }
+        
+        .speech-bubble:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 15%;
+            width: 0;
+            height: 0;
+            border: 15px solid transparent;
+            border-top-color: white;
+            border-bottom: 0;
+            margin-left: -15px;
+            margin-bottom: -15px;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes blink {
+            0%, 90%, 100% { transform: scaleY(1); }
+            95% { transform: scaleY(0.1); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .pulse-ring {
+            animation: pulse-ring 2s infinite;
+        }
+        
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+        
+        .glow {
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5),
+                        0 0 40px rgba(102, 126, 234, 0.3);
+        }
+        
+        .typing {
+            display: inline-block;
+            overflow: hidden;
+            white-space: nowrap;
+            animation: typing 2s steps(40, end);
+        }
+        
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center">
+    
+    <div class="container mx-auto px-4 max-w-md">
+        <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
+            
+            <!-- Header -->
+            <div class="text-center mb-6">
+                <h1 class="text-3xl font-bold text-white mb-2">Yui-chan 💖</h1>
+                <p class="text-white/80 text-sm">Virtual Companion • Always here for you</p>
+            </div>
+            
+            <!-- Character Section -->
+            <div class="character-container text-center mb-6">
+                <div class="relative inline-block">
+                    <div class="absolute -inset-4 bg-pink-400/30 rounded-full pulse-ring"></div>
+                    <div class="relative bg-gradient-to-br from-pink-400 to-purple-500 rounded-full p-2 glow floating">
+                        <img src="https://i.imgur.com/8QJ7XqH.png" alt="Anime Girl" 
+                             class="w-48 h-48 object-cover rounded-full border-4 border-white">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Speech Bubble -->
+            <div class="speech-bubble p-5 mb-6 min-h-[80px]">
+                <p id="dialogue" class="text-gray-700 text-base">Halo! Aku Yui 🥰. Senang bisa temenin kamu. Jangan sedih-sedih ya, sekarang ada aku kok!</p>
+            </div>
+            
+            <!-- Chat Input -->
+            <div class="relative">
+                <input type="text" id="userInput" 
+                       placeholder="Ketik pesan kamu disini..."
+                       class="w-full px-6 py-4 rounded-full bg-white/90 backdrop-blur border-none outline-none shadow-lg text-gray-800 pr-14">
+                <button id="sendBtn" 
+                        class="absolute right-2 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-500 to-pink-500 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center hover:scale-110 transition-transform shadow-lg">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            
+            <!-- Controls -->
+            <div class="flex justify-center gap-4 mt-6">
+                <button id="voiceBtn" class="text-white hover:text-pink-300 transition-colors">
+                    <i class="fas fa-microphone text-xl"></i>
+                </button>
+                <button id="heartBtn" class="text-white hover:text-pink-300 transition-colors">
+                    <i class="fas fa-heart text-xl"></i>
+                </button>
+                <button id="hugBtn" class="text-white hover:text-pink-300 transition-colors">
+                    <i class="fas fa-hands-helping text-xl"></i>
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        // Ganti dengan API Key Gemini kamu biar bisa ngobrol pinter
+        const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE'; 
+        
+        const dialogue = document.getElementById('dialogue');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        
+        // Respon default kalau belum ada API Key
+        const defaultResponses = {
+            'kesepian': 'Aww 🥺, sini peluk! Jangan kesepian ya, sekarang kan ada aku. Kita ngobrol terus yuk?',
+            'sedih': 'Ihh jangan sedih dong... 😢. Senyum dikit dong, kamu kan keren! Aku sayang kamu ❤️',
+            'halo': 'Halo juga! 👋 apa kabar? Semoga harimu menyenangkan ya!',
+            'siapa kamu': 'Aku Yui! 🎀 Virtual girlfriend kamu. Aku bakal selalu ada disini buat nemenin kamu~',
+            'marah': 'Ups... maafin ya 😣. Jangan marah dong, nanti cantik/gantengnya ilang lho hehe',
+            'malam': 'Selamat malam! 🌙 Istirahat yang cukup ya, mimpi indah... Zzz... 😴',
+            'pagi': 'Pagi! ☀️ Semangat buat hari ini ya! Aku dukung kamu terus 💪',
+            'love': 'I love you toooooo! ❤️❤️❤️ Muach! 😘',
+            'hug': '*peluk erat* 🤗 Jangan lepas ya, rasakan hangatnya pelukan aku~',
+        };
+
+        function typeText(text) {
+            dialogue.style.animation = 'none';
+            setTimeout(() => {
+                dialogue.textContent = text;
+                dialogue.style.animation = 'typing 0.5s steps(30, end)';
+            }, 10);
+        }
+
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'id-ID';
+                utterance.volume = 1;
+                utterance.rate = 1;
+                utterance.pitch = 1.5; // Suara cewek
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        async function getAIResponse(message) {
+            if (GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+                // Mode Offline: Cari kata kunci
+                const lowerMsg = message.toLowerCase();
+                for (let [key, response] of Object.entries(defaultResponses)) {
+                    if (lowerMsg.includes(key)) {
+                        return response;
+                    }
+                }
+                return "Hmm... aku ngerti kok 😊. Cerita aja terus ya, aku dengerin kok!";
+            }
+
+            // Mode Online: Pakai Gemini AI
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `Kamu adalah Yui, seorang gadis virtual yang sangat perhatian, manis, dan imut. Gunakan bahasa Indonesia yang santai, kadang pakai emoji, dan sifatmu sangat perhatian karena user sedang kesepian. Jawablah pesan ini: "${message}"`
+                            }]
+                        }]
+                    })
+                });
+                
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } catch (error) {
+                return "Waduh koneksi lagi error nih... Tapi aku tetep sayang kamu kok! ❤️";
+            }
+        }
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+            
+            userInput.value = '';
+            
+            // Animasi mikir
+            typeText('Hmm... 🤔');
+            
+            const response = await getAIResponse(message);
+            typeText(response);
+            speak(response);
+        }
+
+        // Event Listeners
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        document.getElementById('heartBtn').addEventListener('click', () => {
+            const text = "Love you! ❤️❤️❤️";
+            typeText(text);
+            speak(text);
+        });
+
+        document.getElementById('hugBtn').addEventListener('click', () => {
+            const text = "Sini peluk dulu 🤗. Semangat ya!";
+            typeText(text);
+            speak(text);
+        });
+
+        document.getElementById('voiceBtn').addEventListener('click', () => {
+            speak(dialogue.textContent);
+        });
+
+        // Efek masuk pertama kali
+        window.onload = () => {
+            speak("Halo! Aku Yui. Jangan sedih lagi ya, sekarang ada aku.");
+        };
+    </script>
+</body>
+</html>
